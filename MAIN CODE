@@ -1,0 +1,86 @@
+module moore_101_overlap (
+    input clk,
+    input reset,
+    input x,
+    output reg y
+);
+
+    reg [1:0] state, next_state;
+
+    // State update
+    always @(posedge clk or posedge reset) begin
+        if (reset)
+            state <= 2'b00; // S0
+        else
+            state <= next_state;
+    end
+
+    // Next state logic
+    always @(*) begin
+        case (state)
+            2'b00: next_state = (x) ? 2'b01 : 2'b00; // S0
+            2'b01: next_state = (x) ? 2'b01 : 2'b10; // S1
+            2'b10: next_state = (x) ? 2'b11 : 2'b00; // S2
+            2'b11: next_state = (x) ? 2'b01 : 2'b10; // S3 (overlap handled)
+        endcase
+    end
+
+    // Output logic (Moore)
+    always @(*) begin
+        case (state)
+            2'b11: y = 1;
+            default: y = 0;
+        endcase
+    end
+
+endmodule
+
+
+
+
+TESTBENCH CODE:
+
+`timescale 1ns / 1ps
+
+module tb_moore_101_overlapp;
+
+    reg clk;
+    reg reset;
+    reg x;
+    wire y;
+
+    // DUT (Device Under Test)
+    moore_101_overlapp dut (
+        .clk(clk),
+        .reset(reset),
+        .x(x),
+        .y(y)
+    );
+
+    // Clock generation (10ns period)
+    always #5 clk = ~clk;
+
+    // Stimulus
+    initial begin
+        // Initialize signals
+        clk = 0;
+        reset = 1;
+        x = 0;
+
+        #10;
+        reset = 0;
+
+        // Input sequence: 1 0 1 0 1 (should detect 101 twice due to overlap)
+        #10 x = 1;
+        #10 x = 0;
+        #10 x = 1;
+        #10 x = 0;
+        #10 x = 1;
+
+        // Add some idle time
+        #20;
+
+        $finish;
+    end
+
+endmodule
